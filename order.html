@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order Summary</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(to right, #d92027, #ff007f);
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    header {
+      background-color: #ff7043;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+
+    nav a {
+      color: #fff;
+      margin: 0 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: 20px auto;
+      background-color: #fff3e0;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    h2 {
+      color: #ff7043;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table th, table td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+
+    table th {
+      background-color: #ffab91;
+      color: #fff;
+    }
+
+    input[type="number"] {
+      width: 60px;
+    }
+
+    .totals p {
+      margin: 5px 0;
+      font-weight: bold;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #ff7043;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background-color: #ff5722;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #4caf50;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-weight: bold;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍴 Foodie’s Destiny</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="menu.html">Menu</a>
+      <a href="order.html" aria-current="page">Order</a>
+      <a href="tracking.html">Tracking</a>
+    </nav>
+  </header>
+
+  <main>
+    <h2>Your Order Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Dish</th>
+          <th>Quantity</th>
+          <th>Price (₹)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="cart-items">
+        <!-- Cart items inserted here -->
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <p>Subtotal: ₹<span id="subtotal">0.00</span></p>
+      <p>GST (5%): ₹<span id="gst">0.00</span></p>
+      <p>Platform Fee: ₹<span id="platform">20.00</span></p>
+      <p>Delivery Fee: ₹<span id="delivery">40.00</span></p>
+      <p>Total: ₹<span id="total">0.00</span></p>
+    </div>
+
+    <form id="order-form">
+      <h2>Delivery Information</h2>
+      <label>
+        <input type="radio" name="delivery" value="delivery" checked> Delivery
+      </label>
+      <label>
+        <input type="radio" name="delivery" value="pickup"> Pickup
+      </label>
+      <input type="text" name="address" placeholder="Enter your address" required />
+
+      <h2>Customer Details</h2>
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="phone">Mobile Number</label>
+<input type="tel" id="phone" name="phone" pattern="[6-9]{1}[0-9]{9}" required placeholder="e.g. 9876543210" />
+    
+      <h2>Payment Method</h2>
+      <label><input type="radio" name="payment" value="cod" checked> Cash on Delivery</label>
+      <label><input type="radio" name="payment" value="online"> Online Payment</label>
+
+
+      <button type="submit">Place Order</button>
+    </form>
+  </main>
+
+  <div id="popup">✅ Order Placed Successfully!</div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      function loadCart() {
+        const cartItems = JSON.parse(localStorage.getItem("cart")) || [];
+        const tbody = document.getElementById("cart-items");
+        tbody.innerHTML = "";
+
+        cartItems.forEach(item => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${item.name}</td>
+            <td>
+              <input type="number" value="${item.quantity}" min="1" class="quantity-input" data-name="${item.name}" data-price="${item.price}">
+            </td>
+            <td class="price">${(item.price * item.quantity).toFixed(2)}</td>
+            <td><button class="remove-btn">Remove</button></td>
+          `;
+
+          tbody.appendChild(row);
+        });
+
+        addRemoveEvents();
+        calculateTotals();
+      }
+
+      function addRemoveEvents() {
+        document.querySelectorAll(".remove-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            const row = e.target.closest("tr");
+            const name = row.querySelector(".quantity-input").dataset.name;
+            let cart = JSON.parse(localStorage.getItem("cart")) || [];
+            cart = cart.filter(item => item.name !== name);
+            localStorage.setItem("cart", JSON.stringify(cart));
+            row.remove();
+            calculateTotals();
+          });
+        });
+      }
+
+      function calculateTotals() {
+        let subtotal = 0;
+        document.querySelectorAll(".quantity-input").forEach(input => {
+          const qty = parseInt(input.value) || 1;
+          const price = parseFloat(input.dataset.price) || 0;
+          const total = qty * price;
+          subtotal += total;
+
+          const row = input.closest("tr");
+          row.querySelector(".price").textContent = total.toFixed(2);
+        });
+
+        const gst = subtotal * 0.05;
+        const platform = 20;
+        const delivery = 40;
+        const total = subtotal + gst + platform + delivery;
+
+        document.getElementById("subtotal").textContent = subtotal.toFixed(2);
+        document.getElementById("gst").textContent = gst.toFixed(2);
+        document.getElementById("platform").textContent = platform.toFixed(2);
+        document.getElementById("delivery").textContent = delivery.toFixed(2);
+        document.getElementById("total").textContent = total.toFixed(2);
+
+        return total;
+      }
+
+      document.addEventListener("input", e => {
+        if (e.target.classList.contains("quantity-input")) {
+          const name = e.target.dataset.name;
+          const newQty = parseInt(e.target.value) || 1;
+          let cart = JSON.parse(localStorage.getItem("cart")) || [];
+          const item = cart.find(i => i.name === name);
+          if (item) {
+            item.quantity = newQty;
+            localStorage.setItem("cart", JSON.stringify(cart));
+          }
+          calculateTotals();
+        }
+      });
+
+      document.getElementById("order-form").addEventListener("submit", e => {
+        e.preventDefault();
+        const total = calculateTotals();
+        const popup = document.getElementById("popup");
+        popup.textContent = `✅ Order Placed Successfully! Total Amount: ₹${total.toFixed(2)}`;
+        popup.style.display = "block";
+        localStorage.removeItem("cart");
+
+        setTimeout(() => {
+          popup.style.display = "none";
+          window.location.href = "index.html"; // Redirect if needed
+        }, 4000);
+      });
+
+      loadCart();
+    });
+  </script>
+</body>
+</html>
